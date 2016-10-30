@@ -1,9 +1,11 @@
-package app.models;
+package app.models.player;
+
+import app.models.Board;
 
 import java.util.Scanner;
 
 /**
- * HumanPlayer
+ * Created by cristian on 29.10.2016.
  */
 public class HumanPlayer extends Player {
 
@@ -12,12 +14,12 @@ public class HumanPlayer extends Player {
     }
 
     /**
+     * Gets human user move
      *
-     * @return column number to add the tile
+     * @param board
      */
-    public int move(){
+    public int getMove(Board board){
         Scanner input = new Scanner(System.in);
-        System.out.print("Player " + getName() + " turn: ");
         return input.nextInt();
     }
 }

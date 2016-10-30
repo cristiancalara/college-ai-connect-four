@@ -1,8 +1,11 @@
 package app;
 
 import app.models.Board;
-import app.models.Player;
+import app.models.player.Player;
 
+/**
+ * Created by cristian on 29.10.2016.
+ */
 public class ConnectFour {
 
     private Player currentPlayer;
@@ -25,8 +28,16 @@ public class ConnectFour {
      * result
      */
     public void play(){
+        int col;
+
         while (!board.hasWinner() && !board.isFull()){
-            board.addPiece(currentPlayer);
+            col = currentPlayer.move(board, currentPlayerOpponent());
+
+            System.out.println("\nAdd piece on column number: " + col);
+            System.out.println("Updated board ");
+            System.out.print(board);
+            System.out.println("================");
+
             changeTurn();
         }
 
@@ -52,5 +63,14 @@ public class ConnectFour {
      */
     private void changeTurn(){
         currentPlayer = currentPlayer == player1 ? player2 : player1;
+    }
+
+    /**
+     * Returns other player
+     *
+     * @return player
+     */
+    private Player currentPlayerOpponent(){
+        return currentPlayer == player1 ? player2 : player1;
     }
 }

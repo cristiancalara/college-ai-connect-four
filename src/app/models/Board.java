@@ -1,11 +1,11 @@
 package app.models;
 
+import app.models.player.Player;
+
 import java.util.Arrays;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 /**
- * Board
+ * Created by cristian on 29.10.2016.
  */
 public class Board {
     private final char emptyPiece = '.';
@@ -13,8 +13,9 @@ public class Board {
     private final int height = 6;
 
 
-    private final char[][] grid;
-    private int lastCol = -1, lastTop = -1;
+    private char[][] grid;
+    private int lastCol = -1;
+    private int lastTop = -1;
     private Player lastPlayer = null;
 
 
@@ -24,6 +25,54 @@ public class Board {
         for (int h = 0; h < this.height; h++) {
             Arrays.fill(this.grid[h] = new char[this.width], emptyPiece);
         }
+    }
+
+    /**
+     * Used to duplicate a board, and make
+     * a additional move
+     *
+     * @param board
+     * @param player
+     * @param moveCol
+     */
+    public Board(Board board, Player player, int moveCol) {
+        this.grid = new char[this.height][this.width];
+
+        char[][] oldGrid = board.getGrid();
+        for(int i = 0; i < this.height; i++){
+            for(int j = 0; j < this.width; j++){
+                this.grid[i][j] = oldGrid[i][j];
+            }
+        }
+
+        this.lastCol = board.getLastCol();
+        this.lastTop = board.getLastTop();
+
+        this.addPiece(moveCol, player);
+    }
+
+    public int getWidth() {
+        return width;
+    }
+
+    public int getHeight() {
+        return height;
+    }
+
+    public char[][] getGrid() {
+        return grid;
+    }
+
+    public int getLastCol() {
+        return lastCol;
+    }
+
+    public int getLastTop() {
+        return lastTop;
+    }
+
+    public Player getLastPlayer() {
+        return lastPlayer;
     }
 
     /**
@@ -48,38 +97,31 @@ public class Board {
      * Add a piece to the column specified
      * by the player
      *
-     * @param player
+     * @param col - player's choice for the column
+     * @param player - the player that made the move
+     * @return true if we could add a piece to the board, false otherwise
      */
-    public void addPiece(Player player) {
-        do {
+    public boolean addPiece(int col, Player player) {
+        if (!(0 <= col && col < this.width) || isFull()) {
+            return false;
+        }
 
-            int col = player.move();
-            if (!(0 <= col && col < this.width)) {
-                System.out.println("Column must be between 0 and " +
-                        (this.width - 1));
-                continue;
+        // try to find a empty space in the column given
+        // and update last state
+        for (int h = this.height - 1; h >= 0; h--) {
+            if (this.grid[h][col] == emptyPiece) {
+                this.lastCol = col;
+                this.lastTop = h;
+                this.lastPlayer = player;
+
+                this.grid[this.lastTop][this.lastCol] = player.piece();
+
+                return true;
             }
+        }
 
-            // try to find a empty space in the column given
-            // and update last state
-            for (int h = this.height - 1; h >= 0; h--) {
-                if (this.grid[h][col] == emptyPiece) {
-                    this.lastCol = col;
-                    this.lastTop = h;
-                    this.lastPlayer = player;
 
-                    this.grid[this.lastTop][this.lastCol] = player.piece();
-
-                    System.out.println("Updated board ");
-                    System.out.print(this);
-                    System.out.println("=================");
-
-                    return;
-                }
-            }
-
-            System.out.println("Column " + col + " is full.");
-        } while (true);
+        return false;
     }
 
 
@@ -112,6 +154,13 @@ public class Board {
         return true;
     }
 
+    /**
+     * Checks to see if the last piece added made
+     * a streak, vertically, horizontally, or diagonally
+     *
+     * @return true if the last piece added made
+     * a streak, false otherwise
+     */
     public boolean hasWinner() {
         if (this.lastCol == -1) {
             return false;
@@ -119,26 +168,27 @@ public class Board {
 
         char piece = this.grid[this.lastTop][this.lastCol];
         String streak = String.format("%c%c%c%c", piece, piece, piece, piece);
-        return this.horizontal().contains(streak) ||
-                this.vertical().contains(streak) ||
-                this.slashDiagonal().contains(streak) ||
-                this.backslashDiagonal().contains(streak);
+        return this.horizontalLine(this.lastTop).contains(streak) ||
+                this.verticalLine(this.lastCol).contains(streak) ||
+                this.slashDiagonal(this.lastTop, this.lastCol).contains(streak) ||
+                this.backslashDiagonal(this.lastTop, this.lastCol).contains(streak);
     }
+
 
     /**
      * The contents of the row containing the last played piece.
      */
-    private String horizontal() {
-        return new String(this.grid[this.lastTop]);
+    public String horizontalLine(int row) {
+        return new String(this.grid[row]);
     }
 
     /**
      * The contents of the column containing the last played piece.
      */
-    private String vertical() {
+    public String verticalLine(int col) {
         StringBuilder sb = new StringBuilder(this.height);
         for (int h = 0; h < this.height; h++) {
-            sb.append(this.grid[h][this.lastCol]);
+            sb.append(this.grid[h][col]);
         }
         return sb.toString();
     }
@@ -147,10 +197,10 @@ public class Board {
      * The contents of the "/" diagonal containing the last played piece
      * (coordinates have a constant sum).
      */
-    private String slashDiagonal() {
+    public String slashDiagonal(int row, int col) {
         StringBuilder sb = new StringBuilder(this.height);
         for (int h = 0; h < this.height; h++) {
-            int w = this.lastCol + this.lastTop - h;
+            int w = col + row - h;
             if (0 <= w && w < this.width) {
                 sb.append(this.grid[h][w]);
             }
@@ -159,17 +209,60 @@ public class Board {
     }
 
     /**
-     * The contents of the "\" diagonal containing the last played piece
-     * (coordinates have a constant difference).
+     * Checks for a streak like "\" for the
+     * given piece
+     *
+     * @param row
+     * @param col
+     * @return true, if we have a streak
      */
-    private String backslashDiagonal() {
+    public String backslashDiagonal(int row, int col) {
         StringBuilder sb = new StringBuilder(this.height);
         for (int h = 0; h < this.height; h++) {
-            int w = this.lastCol - this.lastTop + h;
+            int w = col - row + h;
             if (0 <= w && w < this.width) {
                 sb.append(this.grid[h][w]);
             }
         }
         return sb.toString();
+    }
+
+    /**
+     * Checks if we can add a piece to the
+     * given column
+     *
+     * @param col
+     * @return
+     */
+    public boolean canAddAtColumn(int col){
+        return isColumnValid(col) && !isColumnFull(col);
+    }
+
+    /**
+     *
+     * @param col
+     * @return true if column is full, false otherwise
+     */
+    public boolean isColumnFull(int col) {
+        for (int i = 0; i < height; i++) {
+            if (grid[i][col] == emptyPiece) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     *
+     * @param col
+     * @return true if column is valid, false otherwise
+     */
+    public boolean isColumnValid(int col){
+        if (!(0 <= col && col < this.width)) {
+            return false;
+        }
+
+        return true;
     }
 }
